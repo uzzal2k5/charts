@@ -1,0 +1,16 @@
+replicaCount: 3
+
+image:
+  repository: quay.io/coreos/etcd
+  tag: v3.5.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 2379
+  peerPort: 2380
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
