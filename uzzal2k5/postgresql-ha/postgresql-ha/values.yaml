@@ -1,0 +1,81 @@
+# values.yaml
+replicaCount: 2
+
+image:
+  repository: postgres
+  tag: "15"
+  pullPolicy: IfNotPresent
+
+postgresql:
+  username: postgres
+  password: postgres123  # will be stored in Secret
+  database: mydb
+
+replication:
+  enabled: false
+  replicationUser: "replica_user"  # User for replication
+  replicationPassword: "your_password"
+  primaryHost: <postgresql-primary>
+  primaryCIDR: <Primary Host Network  CIDRs >
+
+primary:
+  name: primary
+  postgresqlConfig: |-
+  pgHbaConfiguration: |-
+
+replica:
+  name: replica
+  postgresqlConfig: |-
+  pgHbaConfiguration: |-
+
+initdbScripts:
+  init-user.sh: |
+    #!/bin/bash
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<EOF
+    CREATE USER readonly WITH PASSWORD 'readonlypass';
+    GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO readonly;
+    EOF
+
+backup:
+  enabled: true
+  localBackupDir: "/custom/path/$(date +\"%Y-%m-%d\")"
+  schedule: "0 * * * *"
+  s3:
+    enables: true
+    ttl: 30d
+    bucket: my-postgres-backups
+    region: us-east-1
+    accessKeyId: "REPLACE_ME"
+    secretAccessKey: "REPLACE_ME"
+
+service:
+  type: ClusterIP
+  port: 5432
+  readOnly:
+    enabled: true
+    name: readonly
+    port: 5432
+
+resources: {}
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+
+pool:
+  enabled: true
+  image: bitnami/pgpool:4.3.3
+  port: 5432
+  replicaCount: 1
+  config:
+    admin_user: admin
+    admin_password: admin123
+
+tls:
+  enabled: true
+  secretName: postgresql-tls
+  certKey: tls.key
+  certCrt: tls.crt
+  caCrt: ca.crt
+

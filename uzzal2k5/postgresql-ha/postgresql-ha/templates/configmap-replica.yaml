@@ -1,0 +1,16 @@
+# templates/configmap-replica.yaml
+  {{- if .Values.postgresql.replication.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}-replica-config
+  labels:
+    app: {{ include "postgresql-ha.name" . }}
+data:
+  postgresql.conf: |
+    hot_standby = on
+    primaryConninfo: "host={{ .Values.postgresql.primaryHost }} port=5432 user={{ .Values.postgresql.replicationUser }} password={{ .Values.postgresql.replicationPassword }} sslmode=require"
+
+  pg_hba.conf: |
+    host    replication    {{ .Values.postgresql.replication.user }}    {{ .Values.postgresql.replication.primaryCIDR }}    scram-sha-256
+  {{- end }}

@@ -1,0 +1,16 @@
+# templates/service-readonly.yaml
+ {{- if .Values.service.readOnly.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}-{{ .Values.service.readOnly.name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.readOnly.port }}
+      targetPort: 5432
+  selector:
+    app: {{ include "postgresql-ha.name" . }}
+    role: replica
+
+  {{- end }}

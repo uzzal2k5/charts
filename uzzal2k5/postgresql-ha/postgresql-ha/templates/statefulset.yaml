@@ -1,0 +1,87 @@
+# templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}
+  labels:
+    app: {{ include "postgresql-ha.name" . }}
+spec:
+  serviceName: {{ include "postgresql-ha.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "postgresql-ha.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "postgresql-ha.name" . }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.username }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgresql-ha.fullname" . }}
+                  key: postgres-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: config-volume
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+            - name: config-volume
+              mountPath: /var/lib/postgresql/data/pg_hba.conf
+              subPath: pg_hba.conf
+#{{- if .Values.tls.enabled }}
+            - name: tls-volume
+              mountPath: /tls
+              readOnly: true
+  #{{- end }}
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: ca-cert
+          secret:
+            secretName: {{.Values.tls.secretName}}
+        - name: config-volume
+          configMap:
+            name: { { include "postgresql-ha.fullname" . } }-config
+
+#  {{- if .Values.tls.enabled }}
+        - name: tls-volume
+          secret:
+            secretName: {{ .Values.tls.secretName }}
+#  {{- end }}
+        - name: init-scripts
+          configMap:
+           name: { { include "postgresql-ha.fullname" . } }-initdb
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+        storageClassName: {{ .Values.persistence.storageClass | quote }}

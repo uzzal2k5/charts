@@ -1,0 +1,39 @@
+# templates/pgpool-deployment.yaml
+ {{- if .Values.pool.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}-pgpool
+  labels:
+    app: pgpool
+spec:
+  replicas: {{ .Values.pool.replicaCount }}
+  selector:
+    matchLabels:
+      app: pgpool
+  template:
+    metadata:
+      labels:
+        app: pgpool
+    spec:
+      containers:
+        - name: pgpool
+          image: {{ .Values.pool.image }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGPOOL_ADMIN_USERNAME
+              value: {{ .Values.pool.config.admin_user }}
+            - name: PGPOOL_ADMIN_PASSWORD
+              value: {{ .Values.pool.config.admin_password }}
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 30
+            periodSeconds: 10
+  {{- end }}

@@ -1,0 +1,12 @@
+# templates/tls.yaml
+  {{- if .Values.tls.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.tls.secretName }}
+type: kubernetes.io/tls
+data:
+  tls.crt: <base64-encoded-cert>
+  tls.key: <base64-encoded-key>
+  ca.crt: <base64-encoded-ca>
+  {{- end }}

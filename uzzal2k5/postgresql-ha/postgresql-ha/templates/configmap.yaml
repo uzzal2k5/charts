@@ -1,0 +1,22 @@
+# templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}-config
+  labels:
+    app: {{ include "postgresql-ha.name" . }}
+data:
+  POSTGRES_DB: {{ .Values.postgresql.database }}
+  POSTGRES_USER: {{ .Values.postgresql.username }}
+  postgresql.conf: |
+    ssl = 'on'
+    ssl_cert_file = '/tls/tls.crt'
+    ssl_key_file = '/tls/tls.key'
+    ssl_ca_file = '/tls/ca.crt'
+    ssl_prefer_server_ciphers = on
+    password_encryption = scram-sha-256
+    include_if_exists = '/var/lib/postgresql/data/reload.conf'
+  pg_hba.conf: |
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    hostssl all             all             0.0.0.0/0               scram-sha-256
+    hostssl all             all             ::/0                    scram-sha-256

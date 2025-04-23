@@ -1,0 +1,6 @@
+# Chart.yaml
+apiVersion: v2
+name: postgresql-ha
+version: 0.1.0
+description: A Helm chart to deploy PostgreSQL
+appVersion: "15"
