@@ -2,11 +2,22 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "postgresql-ha.fullname" . }}
+  {{- if .Values.replication.enabled }}
+  name: {{ include "postgresql-ha.fullname" . }}-{{ .Values.replica.name }}
+  {{- else }}
+  name: {{ include "postgresql-ha.fullname" . }}-{{ .Values.primary.name }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 5432
+    - port: {{ .Values.service.port | default 5432 }}
+      targetPort: {{ .Values.service.targetPort | default 5432 }}
   selector:
-    app: {{ include "postgresql-ha.name" . }}
+    app: { { - if .Values.replication.enabled } }
+      { { include "replication.name" . } }
+      { { - else } }
+      { include "primary.name" . } }
+      { { - end } }
+    {{- if .Values.service.readOnly.enabled }}
+    role: replica
+    {{- end }}

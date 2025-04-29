@@ -4,7 +4,7 @@ metadata:
   name: {{ include "etcd.fullname" . }}
 spec:
   serviceName: {{ include "etcd.fullname" . }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
       app: {{ include "etcd.name" . }}

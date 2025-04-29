@@ -4,24 +4,36 @@ kind: StatefulSet
 metadata:
   name: {{ include "postgresql-ha.fullname" . }}
   labels:
-    app: {{ include "postgresql-ha.name" . }}
+    app: { { - if .Values.replication.enabled } }
+      {{ include "replication.name" . } }
+      {{ - else } }
+      {{ include "primary.name" . } }
+      { { - end } }
 spec:
   serviceName: {{ include "postgresql-ha.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "postgresql-ha.name" . }}
+      app: { { - if .Values.replication.enabled } }
+        { { include "replication.name" . } }
+        { { - else } }
+        { include "primary.name" . } }
+        { { - end } }
   template:
     metadata:
       labels:
-        app: {{ include "postgresql-ha.name" . }}
+        app: { { - if .Values.replication.enabled } }
+          { { include "replication.name" . } }
+          { { - else } }
+          { include "primary.name" . } }
+          { { - end } }
     spec:
       containers:
-        - name: postgres
+        - name: {{ .Values.container.name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 5432
+            - containerPort: {{ .Values.container.port | default 5432 }}
           env:
             - name: POSTGRES_DB
               value: {{ .Values.postgresql.database }}
@@ -41,22 +53,22 @@ spec:
             - name: config-volume
               mountPath: /var/lib/postgresql/data/pg_hba.conf
               subPath: pg_hba.conf
-#{{- if .Values.tls.enabled }}
+            {{- if .Values.tls.enabled }}
             - name: tls-volume
               mountPath: /tls
               readOnly: true
-  #{{- end }}
+            {{- end }}
             - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true
           readinessProbe:
             tcpSocket:
-              port: 5432
+              port: {{ .Values.service.port }}
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: 5432
+              port: {{ .Values.service.port }}
             initialDelaySeconds: 30
             periodSeconds: 10
       volumes:
@@ -67,11 +79,11 @@ spec:
           configMap:
             name: { { include "postgresql-ha.fullname" . } }-config
 
-#  {{- if .Values.tls.enabled }}
+        {{- if .Values.tls.enabled }}
         - name: tls-volume
           secret:
             secretName: {{ .Values.tls.secretName }}
-#  {{- end }}
+        {{- end }}
         - name: init-scripts
           configMap:
            name: { { include "postgresql-ha.fullname" . } }-initdb

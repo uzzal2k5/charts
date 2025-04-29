@@ -1,5 +1,6 @@
 # templates/pgpool-deployment.yaml
- {{- if .Values.pool.enabled }}
+ {{- if .Values.pgpool.enabled }}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +8,7 @@ metadata:
   labels:
     app: pgpool
 spec:
-  replicas: {{ .Values.pool.replicaCount }}
+  replicas: {{ .Values.pgpool.replicaCount }}
   selector:
     matchLabels:
       app: pgpool
@@ -18,22 +19,22 @@ spec:
     spec:
       containers:
         - name: pgpool
-          image: {{ .Values.pool.image }}
+          image: {{ .Values.pgpool.image }}
           ports:
-            - containerPort: 5432
+            - containerPort: {{ .Values.container.port | default 5432 }}
           env:
             - name: PGPOOL_ADMIN_USERNAME
-              value: {{ .Values.pool.config.admin_user }}
+              value: {{ .Values.pgpool.config.admin_user }}
             - name: PGPOOL_ADMIN_PASSWORD
-              value: {{ .Values.pool.config.admin_password }}
+              value: {{ .Values.pgpool.config.admin_password }}
           readinessProbe:
             tcpSocket:
-              port: 5432
+              port: {{ .Values.service.port | default 5432 }}
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: 5432
+              port: {{ .Values.service.port | default 5432 }}
             initialDelaySeconds: 30
             periodSeconds: 10
   {{- end }}

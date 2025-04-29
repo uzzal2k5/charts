@@ -11,8 +11,12 @@ postgresql:
   password: postgres123  # will be stored in Secret
   database: mydb
 
+container:
+  name: postgres
+  port: ""
+
 replication:
-  enabled: false
+  enabled: false # Default  replication false.
   replicationUser: "replica_user"  # User for replication
   replicationPassword: "your_password"
   primaryHost: <postgresql-primary>
@@ -21,12 +25,20 @@ replication:
 primary:
   name: primary
   postgresqlConfig: |-
+    ssl = 'on'
+    ssl_cert_file = '/tls/tls.crt'
+    ssl_key_file = '/tls/tls.key'
+    ssl_ca_file = '/tls/ca.crt'
+    ssl_prefer_server_ciphers = on
+    password_encryption = scram-sha-256
+    include_if_exists = '/var/lib/postgresql/data/reload.conf'
   pgHbaConfiguration: |-
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    hostssl all             all             0.0.0.0/0               scram-sha-256
+    hostssl all             all             ::/0                    scram-sha-256
 
 replica:
   name: replica
-  postgresqlConfig: |-
-  pgHbaConfiguration: |-
 
 initdbScripts:
   init-user.sh: |
@@ -38,23 +50,23 @@ initdbScripts:
 
 backup:
   enabled: true
-  localBackupDir: "/custom/path/$(date +\"%Y-%m-%d\")"
+  localBackupDir: "/var/lib/postgresql/backups/$(date +\"%Y-%m-%d\")"
   schedule: "0 * * * *"
   s3:
-    enables: true
+    enabled: true
     ttl: 30d
-    bucket: my-postgres-backups
+    bucket: pg-s3-bucket
     region: us-east-1
     accessKeyId: "REPLACE_ME"
     secretAccessKey: "REPLACE_ME"
 
 service:
+  name: postgres
   type: ClusterIP
-  port: 5432
+  port: ""
+  targetPort: ""
   readOnly:
     enabled: true
-    name: readonly
-    port: 5432
 
 resources: {}
 
@@ -63,8 +75,9 @@ persistence:
   size: 5Gi
   storageClass: ""
 
-pool:
+pgpool:
   enabled: true
+  name: pgpool
   image: bitnami/pgpool:4.3.3
   port: 5432
   replicaCount: 1

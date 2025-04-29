@@ -4,7 +4,7 @@ kind: CronJob
 metadata:
   name: {{ include "postgresql-ha.fullname" . }}-backup
 spec:
-  schedule: {{ .Values.postgresql.backup.schedule | quote }}
+  schedule: {{ .Values.backup.schedule | quote }}
   jobTemplate:
     spec:
       template:
@@ -21,19 +21,19 @@ spec:
                   pg_dump -h {{ include "postgresql-ha.fullname" . }} \
                           -U $POSTGRES_USER \
                           $POSTGRES_DB > $BACKUP_FILE
-                  {{- if .Values.postgresql.backup.s3.enabled }}
-                  aws s3 cp $BACKUP_FILE s3://{{ .Values.postgresql.backup.s3.bucket }}/$(basename $BACKUP_FILE) \
-                      --region {{ .Values.postgresql.backup.s3.region }} \
+                  {{- if .Values.backup.s3.enabled }}
+                  aws s3 cp $BACKUP_FILE s3://{{ .Values.backup.s3.bucket }}/$(basename $BACKUP_FILE) \
+                      --region {{ .Values.backup.s3.region }} \
                       --sse AES256
                   aws s3api put-object-tagging \
-                      --bucket {{ .Values.postgresql.backup.s3.bucket }} \
+                      --bucket {{ .Values.backup.s3.bucket }} \
                       --key $(basename $BACKUP_FILE) \
-                      --tagging 'TagSet=[{Key=ttl,Value={{ .Values.postgresql.backup.s3.ttl | default "30d" }} }]'
+                      --tagging 'TagSet=[{Key=ttl,Value={{ .Values.backup.s3.ttl | default "30d" }} }]'
                   {{- else }}
-                  BACKUP_DIR={{ .Values.postgresql.backup.localBackupDir | default "/var/lib/postgresql/backups/$(date +\"%Y-%m-%d\")" }}
+                  BACKUP_DIR={{ .Values.backup.localBackupDir | default "/var/lib/postgresql/backups/$(date +\"%Y-%m-%d\")" }}
                   mkdir -p $BACKUP_DIR && \
                   mv $BACKUP_FILE $BACKUP_DIR/
-                  find /var/lib/postgresql/backups/ -type d -mtime +{{ .Values.postgresql.backup.localRetentionDays | default 7 }} -exec rm -rf {} +
+                  find /var/lib/postgresql/backups/ -type d -mtime +{{ .Values.backup.localRetentionDays | default 7 }} -exec rm -rf {} +
                   {{- end }}
               env:
                 - name: POSTGRES_USER
@@ -45,7 +45,7 @@ spec:
                     secretKeyRef:
                       name: {{ include "postgresql-ha.fullname" . }}
                       key: postgres-password
-                {{- if .Values.postgresql.backup.s3.enabled }}
+                {{- if .Values.backup.s3.enabled }}
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
@@ -56,9 +56,9 @@ spec:
                     secretKeyRef:
                       name: {{ include "postgresql-ha.fullname" . }}
                       key: aws-secret-access-key
-                {{- end }}
+               {{- end }}
           restartPolicy: OnFailure
-          {{- if not .Values.postgresql.backup.s3.enabled }}
+          {{- if not .Values.backup.s3.enabled }}
           volumes:
             - name: backup
               emptyDir: {}

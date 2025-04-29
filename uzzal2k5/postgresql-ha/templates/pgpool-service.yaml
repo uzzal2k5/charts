@@ -1,0 +1,17 @@
+{{- if .Values.pgpool.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postgresql-ha.fullname" . }}-{{ .Values.pgpool.name }}
+  labels:
+    app: {{ include "postgresql-ha.fullname" . }}-{{ .Values.pgpool.name }}
+    component: pgpool
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+  selector:
+    app: {{ include "postgresql-ha.fullname" . }}-{{ .Values.pgpool.name }}
+    component: pgpool
+{{- end }}

@@ -4,19 +4,27 @@ kind: ConfigMap
 metadata:
   name: {{ include "postgresql-ha.fullname" . }}-config
   labels:
-    app: {{ include "postgresql-ha.name" . }}
+    app: {{- if .Values.replication.enabled }}
+      {{ include "replication.name" . }}
+    {{- else }}
+      { include "primary.name" . }}
+    {{- end }}
+
 data:
   POSTGRES_DB: {{ .Values.postgresql.database }}
   POSTGRES_USER: {{ .Values.postgresql.username }}
   postgresql.conf: |
-    ssl = 'on'
-    ssl_cert_file = '/tls/tls.crt'
-    ssl_key_file = '/tls/tls.key'
-    ssl_ca_file = '/tls/ca.crt'
-    ssl_prefer_server_ciphers = on
-    password_encryption = scram-sha-256
-    include_if_exists = '/var/lib/postgresql/data/reload.conf'
+    {{- if .Values.replication.enabled }}
+    {{ .Values.primary.postgresqlConfig }}
+      hot_standby = on
+      primaryConninfo: "host={{ .Values.replication.primaryHost }} port={{ .Values.service.port }} user={{ .Values.replication.replicationUser }} password={{ .Values.replication.replicationPassword }} sslmode=require"
+    {{- else }}
+    {{ .Values.primary.postgresqlConfig }}
+    {{- end }}
   pg_hba.conf: |
-    # TYPE  DATABASE        USER            ADDRESS                 METHOD
-    hostssl all             all             0.0.0.0/0               scram-sha-256
-    hostssl all             all             ::/0                    scram-sha-256
+    {{- if .Values.replication.enabled }}
+    {{ .Values.primary.pgHbaConfiguration }}
+    host    replication    {{ .Values.replication.replicationUser }}    {{ .Values.replication.primaryCIDR }}    scram-sha-256
+    {{- else }}
+    {{ .Values.primary.pgHbaConfiguration }}
+    {{- end }}
